@@ -1,0 +1,27 @@
+This is Perl module Test::riak.
+
+INSTALLATION
+
+Test::riak installation is straightforward. If your CPAN shell is set up,
+you should just be able to do
+
+    % cpan Test::riak
+
+Download it, unpack it, then build it as per the usual:
+
+    % perl Makefile.PL
+    % make && make test
+
+Then install it:
+
+    % make install
+
+DOCUMENTATION
+
+Test::riak documentation is available as in POD. So you can do:
+
+    % perldoc Test::riak
+
+to read the documentation online with your favorite pager.
+
+Tatsuro Hisamori
