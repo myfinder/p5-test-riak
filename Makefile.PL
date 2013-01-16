@@ -2,9 +2,10 @@ use inc::Module::Install;
 name 'Test-riak';
 all_from 'lib/Test/riak.pm';
 
-# requires '';
+requires 'Class::Accessor::Lite';
+requires 'Test::TCP';
 
-tests 't/*.t';
+tests_recursive;
 author_tests 'xt';
 
 test_requires 'Test::More';
