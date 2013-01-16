@@ -119,7 +119,7 @@ sub setup {
     close $fh_riak;
 
     my $ert_base;
-    if ($runner_base_dir =~ /^RUNNER_BASE_DIR=\//) {
+    if ($runner_base_dir =~ s/^RUNNER_BASE_DIR=//g) {
         $ert_base = $runner_base_dir;
     }
     else {
