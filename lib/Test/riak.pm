@@ -170,18 +170,7 @@ sub setup {
 sub start {
     my $self = shift;
 
-    open my $log_fh, '>>', $self->base_dir . '/riak.log'
-        or die 'failed to create log file: '. $self->base_dir . '/riak.log : ' . $!;
-    my $pid = fork; die qq/fork(2) failed:$!/ unless defined $pid;
-    if ($pid == 0) {
-        open STDOUT, '>&', $log_fh or die "dup(2) failed:$!";                           
-        open STDERR, '>&', $log_fh or die "dup(2) failed:$!";                           
-        exec $self->launch_cmd;
-        die "failed to launch riak:$?";
-    }
-    close $log_fh;
-
-    1;
+    system $self->launch_cmd;
 }
 
 sub stop {
