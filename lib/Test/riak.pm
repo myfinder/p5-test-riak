@@ -7,7 +7,7 @@ use Cwd;
 use File::Temp qw/tempfile tempdir/;
 use Test::TCP;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 our $errstr;
 our $app_config_tmpl=<<'EOS';
 [
