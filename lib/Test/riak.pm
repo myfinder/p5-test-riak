@@ -7,7 +7,7 @@ use Cwd;
 use File::Temp qw/tempfile tempdir/;
 use Test::TCP;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 our $errstr;
 our $app_config_tmpl=<<'EOS';
 [
@@ -43,6 +43,7 @@ EOS
 my %Defaults = (
     auto_start => 1,
     base_dir   => undef,
+    bin_dir    => '',
     launch_cmd => undef,
     riak_prog  => undef,
     app_config => undef,
@@ -145,6 +146,7 @@ sub setup {
 
     my $root_dir = $ert_base;
     my $bin_dir  = $root_dir .'/erts-'. $erts_vsn .'/bin';
+    $self->bin_dir($bin_dir);
 
     my $config_path = $self->app_config;
     my $base_path   = $ert_base;
@@ -176,7 +178,7 @@ sub start {
 sub stop {
     my ($self) = @_;
 
-    my $to_erl = _find_program('to_erl') or return;
+    my $to_erl = $self->bin_dir.'/to_erl';
     my $base_dir = $self->base_dir;
     system 'echo "init:stop()." | '."$to_erl $base_dir > /dev/null 2>&1";
 }
@@ -184,6 +186,11 @@ sub stop {
 sub _find_program {
     my ($prog) = shift;
     undef $errstr;
+
+    if ($ENV{PATH}) {
+        $ENV{PATH} = $ENV{PATH}.':/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin';
+    }
+
     my $path = `which $prog 2> /dev/null`;
     chomp $path if $path;
 
