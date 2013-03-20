@@ -197,7 +197,7 @@ sub _wait_starting {
             Proto    => 'tcp',
             PeerAddr => '127.0.0.1',
             PeerPort => $self->http_port,
-        );
+        ) or next;
         $http->print("GET /stats HTTP/1.0\n\n");
 
         my $result = "";
