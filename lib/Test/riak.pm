@@ -178,11 +178,20 @@ sub setup {
 sub _wait_starting {
     my $self = shift;
 
-    wait_port($self->pb_port);
-    wait_port($self->http_port);
+    eval {
+        wait_port($self->pb_port);
+        wait_port($self->http_port);
+    };
+
+    my $retry;
+    if ($@) {
+        warn $@;
+        $retry = 0;
+    } else {
+        $retry = 100;
+    }
 
     # Ask if riak has been started.
-    my $retry = 100;
     while ($retry--) {
         my $http = IO::Socket::INET->new(
             Proto    => 'tcp',
@@ -200,6 +209,8 @@ sub _wait_starting {
         Time::HiRes::sleep(0.1);
     }
 
+    # Give up to start riak and return to the initial state.
+    $self->_status("Initialized");
     die "A riak server has not started.";
 }
 
