@@ -52,8 +52,11 @@ my %Defaults = (
     _owner_pid => undef,
 );
 
-$SIG{INT}  = 'stop';
-$SIG{TERM} = 'stop';
+# To ensure DESTROY() be called.
+for (qw(INT TERM)) {
+    my $sig = $_;
+    $SIG{$sig} = sub { die "$sig signal was sent." };
+}
 
 Class::Accessor::Lite->mk_accessors(keys %Defaults);
 
