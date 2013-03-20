@@ -5,7 +5,9 @@ use warnings;
 use Class::Accessor::Lite;
 use Cwd;
 use File::Temp qw/tempfile tempdir/;
+use IO::Socket::INET;
 use Test::TCP;
+use Time::HiRes;
 
 our $VERSION = '0.03';
 our $errstr;
@@ -172,6 +174,30 @@ sub setup {
     1;
 }
 
+sub _wait_riak {
+    my $port = shift;
+
+    my $retry = 100;
+    while ($retry--) {
+        my $http = IO::Socket::INET->new(
+            Proto    => 'tcp',
+            PeerAddr => '127.0.0.1',
+            PeerPort => $port,
+        );
+        $http->print("GET /stats HTTP/1.0\n\n");
+
+        my $result = "";
+        my $buffer;
+        $result .= $buffer while $http->read($buffer, 1024);
+
+        return if $result =~ m{^.+\b200\b};
+
+        Time::HiRes::sleep(0.1);
+    }
+
+    die "A riak server has not started.";
+}
+
 sub start {
     my $self = shift;
 
@@ -179,6 +205,7 @@ sub start {
 
     wait_port($self->pb_port);
     wait_port($self->http_port);
+    _wait_riak($self->http_port);
 }
 
 sub stop {
