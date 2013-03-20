@@ -176,6 +176,9 @@ sub start {
     my $self = shift;
 
     system $self->launch_cmd;
+
+    wait_port($self->pb_port);
+    wait_port($self->http_port);
 }
 
 sub stop {
