@@ -52,6 +52,7 @@ my %Defaults = (
     pb_port    => undef,
     http_port  => undef,
     _owner_pid => undef,
+    _status => 'Initialized', # Initialized|Starting|Started
 );
 
 # To ensure DESTROY() be called.
@@ -174,15 +175,19 @@ sub setup {
     1;
 }
 
-sub _wait_riak {
-    my $port = shift;
+sub _wait_starting {
+    my $self = shift;
 
+    wait_port($self->pb_port);
+    wait_port($self->http_port);
+
+    # Ask if riak has been started.
     my $retry = 100;
     while ($retry--) {
         my $http = IO::Socket::INET->new(
             Proto    => 'tcp',
             PeerAddr => '127.0.0.1',
-            PeerPort => $port,
+            PeerPort => $self->http_port,
         );
         $http->print("GET /stats HTTP/1.0\n\n");
 
@@ -200,16 +205,20 @@ sub _wait_riak {
 
 sub start {
     my $self = shift;
+    $self->_status("Starting");
 
     system $self->launch_cmd;
+    $self->_wait_starting;
 
-    wait_port($self->pb_port);
-    wait_port($self->http_port);
-    _wait_riak($self->http_port);
+    $self->_status("Started");
 }
 
 sub stop {
     my ($self) = @_;
+
+    return if $self->_status eq 'Initialized';
+
+    $self->_wait_starting if $self->_status eq 'Starting';
 
     my $to_erl = $self->bin_dir.'/to_erl';
     my $base_dir = $self->base_dir;
