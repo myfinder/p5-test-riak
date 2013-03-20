@@ -5,7 +5,9 @@ use warnings;
 use Class::Accessor::Lite;
 use Cwd;
 use File::Temp qw/tempfile tempdir/;
+use IO::Socket::INET;
 use Test::TCP;
+use Time::HiRes;
 
 our $VERSION = '0.03';
 our $errstr;
@@ -50,10 +52,14 @@ my %Defaults = (
     pb_port    => undef,
     http_port  => undef,
     _owner_pid => undef,
+    _status => 'Initialized', # Initialized|Starting|Started
 );
 
-$SIG{INT}  = 'stop';
-$SIG{TERM} = 'stop';
+# To ensure DESTROY() be called.
+for (qw(INT TERM)) {
+    my $sig = $_;
+    $SIG{$sig} = sub { die "$sig signal was sent." };
+}
 
 Class::Accessor::Lite->mk_accessors(keys %Defaults);
 
@@ -169,14 +175,61 @@ sub setup {
     1;
 }
 
-sub start {
+sub _wait_starting {
     my $self = shift;
 
+    eval {
+        wait_port($self->pb_port);
+        wait_port($self->http_port);
+    };
+
+    my $retry;
+    if ($@) {
+        warn $@;
+        $retry = 0;
+    } else {
+        $retry = 100;
+    }
+
+    # Ask if riak has been started.
+    while ($retry--) {
+        my $http = IO::Socket::INET->new(
+            Proto    => 'tcp',
+            PeerAddr => '127.0.0.1',
+            PeerPort => $self->http_port,
+        ) or next;
+        $http->print("GET /stats HTTP/1.0\n\n");
+
+        my $result = "";
+        my $buffer;
+        $result .= $buffer while $http->read($buffer, 1024);
+
+        return if $result =~ m{^.+\b200\b};
+
+        Time::HiRes::sleep(0.1);
+    }
+
+    # Give up to start riak and return to the initial state.
+    $self->_status("Initialized");
+    die "A riak server has not started.";
+}
+
+sub start {
+    my $self = shift;
+    $self->_status("Starting");
+
     system $self->launch_cmd;
+    $self->_wait_starting;
+
+    $self->_status("Started");
 }
 
 sub stop {
     my ($self) = @_;
+
+    return if $self->_status eq 'Initialized';
+
+    $self->_wait_starting if $self->_status eq 'Starting';
 
     my $to_erl = $self->bin_dir.'/to_erl';
     my $base_dir = $self->base_dir;
