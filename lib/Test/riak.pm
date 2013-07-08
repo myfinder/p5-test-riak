@@ -175,6 +175,22 @@ sub setup {
     1;
 }
 
+sub _does_run_http {
+    my $self = shift;
+    my $http = IO::Socket::INET->new(
+        Proto    => 'tcp',
+        PeerAddr => '127.0.0.1',
+        PeerPort => $self->http_port,
+    ) or return;
+    $http->print("GET /stats HTTP/1.0\n\n");
+
+    my $result = "";
+    my $buffer;
+    $result .= $buffer while $http->read($buffer, 1024);
+
+    $result =~ m{^.+\b200\b};
+}
+
 sub _wait_starting {
     my $self = shift;
 
@@ -193,19 +209,7 @@ sub _wait_starting {
 
     # Ask if riak has been started.
     while ($retry--) {
-        my $http = IO::Socket::INET->new(
-            Proto    => 'tcp',
-            PeerAddr => '127.0.0.1',
-            PeerPort => $self->http_port,
-        ) or next;
-        $http->print("GET /stats HTTP/1.0\n\n");
-
-        my $result = "";
-        my $buffer;
-        $result .= $buffer while $http->read($buffer, 1024);
-
-        return if $result =~ m{^.+\b200\b};
-
+        return if $self->_does_run_http;
         Time::HiRes::sleep(0.1);
     }
 
@@ -233,7 +237,15 @@ sub stop {
 
     my $to_erl = $self->bin_dir.'/to_erl';
     my $base_dir = $self->base_dir;
-    system 'echo "init:stop()." | '."$to_erl $base_dir > /dev/null 2>&1";
+
+    my $retry = 100;
+    while ($retry-- > 0) {
+        system 'echo "init:stop()." | '."$to_erl $base_dir > /dev/null 2>&1";
+        return unless $self->_does_run_http;
+        Time::HiRes::sleep(0.1);
+    }
+
+    die "Seems that a riak server will never die";
 }
 
 sub _find_program {
