@@ -9,7 +9,7 @@ use IO::Socket::INET;
 use Test::TCP;
 use Time::HiRes;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 our $errstr;
 our $app_config_tmpl=<<'EOS';
 [
@@ -118,12 +118,21 @@ sub setup {
 
     my $runner_base_dir;
     my $runner_script_dir;
+    my $riak_env_script;
+
     open my $fh_riak, '<', $self->riak_prog;
     while (<$fh_riak>) {
+        $riak_env_script = $1 if $_ =~ /^\. "(.+?)"/;
+    }
+    close $fh_riak;
+
+    $riak_env_script = $self->riak_prog unless $riak_env_script;
+    open my $fh_riak_env, '<', $riak_env_script;
+    while (<$fh_riak_env>) {
         $runner_base_dir = $_ if $_ =~ /^RUNNER_BASE_DIR=/;
         $runner_script_dir = $_ if $_ =~ /^RUNNER_SCRIPT_DIR=/;
     }
-    close $fh_riak;
+    close $fh_riak_env;
 
     my $ert_base;
     if ($runner_base_dir =~ /^RUNNER_BASE_DIR=\//) {
